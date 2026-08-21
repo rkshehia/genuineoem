@@ -623,21 +623,7 @@ code {
   font-size: 12px;
 }
 
-/* The filed enquiry sits above the fold of the card, always readable. */
-.goem-req-summary {
-  border-top: 1px dashed #30363d;
-  padding: 4px 16px 16px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-}
-.goem-req-summary .goem-label {
-  margin: 14px 0 6px;
-}
-.goem-req-summary .goem-kv,
-.goem-req-summary .goem-msg-list {
-  width: 100%;
-}
+/* Collapsed, a card is just its summary row; the detail opens in place. */
 .goem-req-body {
   border-top: 1px solid #30363d;
   padding: 18px 16px 22px;

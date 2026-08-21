@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { Link, createFileRoute, useParams } from '@tanstack/react-router'
-import { QuoteFollowUp } from '@/components/QuoteFollowUp'
 import { api, partImageUrl } from '@/lib/api'
 import { formatDate, formatMoney, type LookupResult } from '@/lib/quote'
 import { normalizeQuoteRef } from '@/lib/quoteRef'
@@ -175,8 +174,7 @@ function AccessQuotePage() {
                   </p>
                   <p className="goem-hint">
                     Your request is with our supplier network. This page updates the
-                    moment the priced quote is published — reload it later, or use the
-                    message box below to chase it.
+                    moment the priced quote is published — reload it later to check.
                   </p>
                 </div>
               ) : (
@@ -185,14 +183,6 @@ function AccessQuotePage() {
                   quote={record.quote}
                 />
               )}
-            </div>
-
-            <div className="goem-section">
-              <p className="goem-label">// reply.to_supplier</p>
-              <QuoteFollowUp
-                quoteRef={record.request.ref}
-                defaultEmail={record.request.email}
-              />
             </div>
           </>
         )}

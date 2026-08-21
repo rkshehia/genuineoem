@@ -37,8 +37,7 @@ A terminal/hacker-styled site for GENUINE_OEM, a UK-based reseller of genuine BM
 │   └── quote-form.html        # Static skeleton so Netlify's build bot detects the forms
 ├── src
 │   ├── components
-│   │   ├── QuoteForm.tsx      # request_quote.exe — stores the request, returns a reference
-│   │   └── QuoteFollowUp.tsx  # Reply box on the access page, posts to Netlify Forms
+│   │   └── QuoteForm.tsx      # request_quote.exe — stores the request, returns a reference
 │   ├── lib                    # api endpoints, quote types/formatters, ref normalisation
 │   ├── routes
 │   │   ├── __root.tsx         # Root layout: fonts, meta, global styles
@@ -89,7 +88,7 @@ Schema lives in `db/schema.ts`. After any change run `npx drizzle-kit generate -
 
 Forms are now a notification channel, not the system of record — the database is. A form POST that fails does not lose the request.
 
-Submissions are also read back into `/admin` by the `admin-submissions` function, which calls the Netlify API. That needs `NETLIFY_API_TOKEN` set to a personal access token; without it the inbox panel reports itself unconfigured and the rest of the console carries on. Follow-up replies are matched to a request by their `quote_ref` field and shown on that request's card.
+Submissions are also read back into `/admin` by the `admin-submissions` function, which calls the Netlify API. That needs `NETLIFY_API_TOKEN` set to a personal access token; without it the inbox panel reports itself unconfigured and the rest of the console carries on. Historical follow-up replies are matched to a request by their `quote_ref` field and shown on that request's card; the customer-facing reply box has been removed from the access page, so no new ones arrive.
 
 Submissions go via AJAX (`fetch` with `application/x-www-form-urlencoded`). Because Netlify's build-time form detection only scans static HTML, `public/quote-form.html` contains a hidden mirror of every field, and field names must stay in sync with the React components. Form submissions don't work in local dev — test on a deploy preview.
 
