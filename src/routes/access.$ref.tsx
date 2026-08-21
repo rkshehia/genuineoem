@@ -158,33 +158,35 @@ function AccessQuotePage() {
               </div>
             </div>
 
-            <div className="goem-section">
-              <p className="goem-label">// request.payload</p>
-              <div className="goem-kv">
-                <Row label="part_no" value={record.request.partNo} />
-                <Row label="vehicle_id" value={record.request.vehicleId} />
-                <Row label="message" value={record.request.message} />
-              </div>
-            </div>
-
-            <div className="goem-section">
-              <p className="goem-label">// quote.output</p>
-              {record.status === 'processing' ? (
-                <div className="goem-log goem-processing">
-                  <p>
-                    <span>202 &gt;</span> order is still being processed
-                  </p>
-                  <p className="goem-hint">
-                    Your request is with our supplier network. This page updates the
-                    moment the priced quote is published — reload it later to check.
-                  </p>
+            <div className="goem-split goem-split-payload">
+              <div className="goem-section">
+                <p className="goem-label">// request.payload</p>
+                <div className="goem-kv">
+                  <Row label="part_no" value={record.request.partNo} />
+                  <Row label="vehicle_id" value={record.request.vehicleId} />
+                  <Row label="message" value={record.request.message} />
                 </div>
-              ) : (
-                <QuoteDetails
-                  quoteRef={record.request.ref}
-                  quote={record.quote}
-                />
-              )}
+              </div>
+
+              <div className="goem-section">
+                <p className="goem-label">// quote.output</p>
+                {record.status === 'processing' ? (
+                  <div className="goem-log goem-processing">
+                    <p>
+                      <span>202 &gt;</span> order is still being processed
+                    </p>
+                    <p className="goem-hint">
+                      Your request is with our supplier network. This page updates the
+                      moment the priced quote is published — reload it later to check.
+                    </p>
+                  </div>
+                ) : (
+                  <QuoteDetails
+                    quoteRef={record.request.ref}
+                    quote={record.quote}
+                  />
+                )}
+              </div>
             </div>
           </>
         )}
