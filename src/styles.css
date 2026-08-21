@@ -123,25 +123,14 @@ code {
   display: grid;
   grid-template-columns: 1fr 1fr;
 }
-.goem-split > .goem-section {
-  /* Grid children default to min-content width, so a long unbroken value
-     would otherwise push its column past its share of the row. */
-  min-width: 0;
-}
 .goem-split > .goem-section + .goem-section {
   border-left: 1px solid #30363d;
 }
 .goem-split .goem-kv-row {
   grid-template-columns: 140px 1fr;
 }
-/* The quote output carries a photo and the cost table, so it gets the wider
-   half of its band rather than an even split. */
-.goem-split-payload {
-  grid-template-columns: 5fr 7fr;
-}
 @media (max-width: 860px) {
-  .goem-split,
-  .goem-split-payload {
+  .goem-split {
     grid-template-columns: 1fr;
   }
   .goem-split > .goem-section + .goem-section {
