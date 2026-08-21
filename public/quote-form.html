@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <!-- This file exists only so Netlify registers the forms at build time. -->
+    <!-- It is never shown to users. Field names must match the React components -->
+    <!-- in src/components/ exactly — Netlify rejects unregistered field names. -->
+    <form name="quote-request" netlify netlify-honeypot="bot-field" hidden>
+      <input type="hidden" name="form-name" value="quote-request" />
+      <input type="text" name="quote_ref" />
+      <input type="text" name="name" />
+      <input type="email" name="email" />
+      <input type="text" name="phone" />
+      <input type="text" name="part_no" />
+      <input type="text" name="vehicle_id" />
+      <input type="text" name="destination_country" />
+      <textarea name="message"></textarea>
+      <input type="hidden" name="subject" />
+      <input name="bot-field" />
+    </form>
+
+    <form name="quote-followup" netlify netlify-honeypot="bot-field" hidden>
+      <input type="hidden" name="form-name" value="quote-followup" />
+      <input type="text" name="quote_ref" />
+      <input type="email" name="email" />
+      <textarea name="message"></textarea>
+      <input type="hidden" name="subject" />
+      <input name="bot-field" />
+    </form>
+  </body>
+</html>

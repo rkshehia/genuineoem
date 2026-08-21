@@ -1,0 +1,11 @@
+[build]
+  # Install before building: the deploy runs `vite` from node_modules/.bin, so a
+  # container that starts without an installed tree fails with exit 127
+  # ("vite: command not found"). Re-running install is a fast no-op when the
+  # pnpm store is already warm.
+  command = "pnpm install --frozen-lockfile && pnpm run build"
+  publish = "dist/client"
+[dev]
+  command = "npm run dev"
+  targetPort = 3000
+  port = 8888
