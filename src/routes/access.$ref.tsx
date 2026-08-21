@@ -128,31 +128,33 @@ function AccessQuotePage() {
 
         {record && (
           <>
-            <div className="goem-section">
-              <p className="goem-label">// reference.details</p>
-              <div className="goem-kv">
-                <Row label="quote_ref" value={<code className="goem-inline-code">{record.request.ref}</code>} />
-                <Row label="filed" value={formatDate(record.request.createdAt)} />
-                <Row
-                  label="state"
-                  value={
-                    <span
-                      className={`goem-badge ${record.status === 'ready' ? 'ready' : 'pending'}`}
-                    >
-                      {record.status === 'ready' ? 'quote issued' : 'processing'}
-                    </span>
-                  }
-                />
+            <div className="goem-split">
+              <div className="goem-section">
+                <p className="goem-label">// reference.details</p>
+                <div className="goem-kv">
+                  <Row label="quote_ref" value={<code className="goem-inline-code">{record.request.ref}</code>} />
+                  <Row label="filed" value={formatDate(record.request.createdAt)} />
+                  <Row
+                    label="state"
+                    value={
+                      <span
+                        className={`goem-badge ${record.status === 'ready' ? 'ready' : 'pending'}`}
+                      >
+                        {record.status === 'ready' ? 'quote issued' : 'processing'}
+                      </span>
+                    }
+                  />
+                </div>
               </div>
-            </div>
 
-            <div className="goem-section">
-              <p className="goem-label">// customer.details</p>
-              <div className="goem-kv">
-                <Row label="name" value={record.request.name} />
-                <Row label="email" value={record.request.email} />
-                <Row label="phone" value={record.request.phone} />
-                <Row label="destination_country" value={record.request.destinationCountry} />
+              <div className="goem-section">
+                <p className="goem-label">// customer.details</p>
+                <div className="goem-kv">
+                  <Row label="name" value={record.request.name} />
+                  <Row label="email" value={record.request.email} />
+                  <Row label="phone" value={record.request.phone} />
+                  <Row label="destination_country" value={record.request.destinationCountry} />
+                </div>
               </div>
             </div>
 
