@@ -116,6 +116,32 @@ code {
   margin: 0 0 14px;
   text-transform: lowercase;
 }
+
+/* Two panels sharing one row of the record — each keeps its own section
+   rule, so the pair reads as a single band split down the middle. */
+.goem-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.goem-split > .goem-section + .goem-section {
+  border-left: 1px solid #30363d;
+}
+.goem-split .goem-kv-row {
+  grid-template-columns: 140px 1fr;
+}
+@media (max-width: 860px) {
+  .goem-split {
+    grid-template-columns: 1fr;
+  }
+  .goem-split > .goem-section + .goem-section {
+    border-left: none;
+  }
+}
+@media (max-width: 600px) {
+  .goem-split .goem-kv-row {
+    grid-template-columns: 1fr;
+  }
+}
 .goem-modal-backdrop {
   position: fixed;
   inset: 0;
