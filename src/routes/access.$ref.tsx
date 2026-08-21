@@ -237,6 +237,11 @@ function QuoteDetails({
           <span>{formatMoney(quote.totalCost, quote.currency)}</span>
         </div>
       </div>
+
+      {/* Placeholder only — no checkout flow is wired up behind this yet. */}
+      <button type="button" className="goem-accept-btn">
+        &gt; accept &amp; pay
+      </button>
     </>
   )
 }

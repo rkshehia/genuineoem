@@ -523,6 +523,26 @@ code {
   font-weight: 700;
 }
 
+.goem-accept-btn {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 13px 18px;
+  background: #0d1117;
+  color: #3fb950;
+  border: 1px solid #238636;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.goem-accept-btn:hover {
+  background: #161b22;
+  border-color: #3fb950;
+}
+
 /* --- part photo --- */
 .goem-part-image {
   margin: 18px 0 0;
