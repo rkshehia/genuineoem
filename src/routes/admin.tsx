@@ -51,16 +51,15 @@ const draftFrom = (request: AdminRequest): QuoteDraft => ({
   notes: request.quote?.notes ?? '',
 })
 
-/** The enquiry as the customer filed it, in the order the form asks for it. */
+/**
+ * The rest of the filed enquiry — everything the collapsed summary row does not
+ * already carry, in the order the form asks for it.
+ */
 const ENQUIRY_FIELDS: [string, (request: AdminRequest) => string][] = [
-  ['name', (r) => r.name],
-  ['email', (r) => r.email],
-  ['phone', (r) => r.phone],
   ['destination', (r) => r.destinationCountry],
   ['part_no', (r) => r.partNo],
   ['vehicle_id', (r) => r.vehicleId],
   ['message', (r) => r.message],
-  ['filed', (r) => formatDate(r.createdAt)],
 ]
 
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024
@@ -474,9 +473,7 @@ function RequestCard({
         <span className="goem-req-ref">{request.ref}</span>
         <span className="goem-req-name">{request.name}</span>
         <span className="goem-req-meta">{request.email}</span>
-        <span className="goem-req-meta">
-          {request.partNo || request.vehicleId || 'no part reference'}
-        </span>
+        <span className="goem-req-meta">{request.phone || 'no phone'}</span>
         <span className="goem-req-meta">{formatDate(request.createdAt)}</span>
         <span className={`goem-badge ${request.quote ? 'ready' : 'pending'}`}>
           {request.quote
@@ -488,40 +485,32 @@ function RequestCard({
         </span>
       </button>
 
-      {/* The filed enquiry reads as a form whether or not the card is open —
-          pricing a part means looking at what was actually asked for. */}
-      <div className="goem-req-summary">
-        <p className="goem-label">// filed_enquiry</p>
-        <div className="goem-kv">
-          {ENQUIRY_FIELDS.map(([key, value]) => (
-            <div className="goem-kv-row" key={key}>
-              <span className="goem-kv-key">{key}</span>
-              <span className="goem-kv-value">{value(request) || '—'}</span>
-            </div>
-          ))}
-        </div>
-
-        {messages.length > 0 && (
-          <>
-            <p className="goem-label">// customer_messages ({messages.length})</p>
-            <div className="goem-msg-list">
-              {messages.map((message) => (
-                <SubmissionCard key={message.id} submission={message} />
-              ))}
-            </div>
-          </>
-        )}
-
-        {!expanded && (
-          <button type="button" className="goem-link-btn" onClick={onToggle}>
-            &gt; {request.quote ? 'edit published quote' : 'prepare quote'}
-          </button>
-        )}
-      </div>
-
+      {/* Everything below the summary row stays folded away until the row is
+          opened, so a long list of enquiries reads as one line each. */}
       {expanded && (
         <div className="goem-req-body">
-          <p className="goem-label goem-label-first">// prepare_quote.sh</p>
+          <p className="goem-label goem-label-first">// filed_enquiry</p>
+          <div className="goem-kv">
+            {ENQUIRY_FIELDS.map(([key, value]) => (
+              <div className="goem-kv-row" key={key}>
+                <span className="goem-kv-key">{key}</span>
+                <span className="goem-kv-value">{value(request) || '—'}</span>
+              </div>
+            ))}
+          </div>
+
+          {messages.length > 0 && (
+            <>
+              <p className="goem-label">// customer_messages ({messages.length})</p>
+              <div className="goem-msg-list">
+                {messages.map((message) => (
+                  <SubmissionCard key={message.id} submission={message} />
+                ))}
+              </div>
+            </>
+          )}
+
+          <p className="goem-label">// prepare_quote.sh</p>
           <form onSubmit={handleSubmit} className="goem-form">
             <div className="goem-form-grid">
               <label className="goem-field">
