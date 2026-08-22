@@ -238,10 +238,14 @@ function QuoteDetails({
         </div>
       </div>
 
-      {/* Placeholder only — no checkout flow is wired up behind this yet. */}
-      <button type="button" className="goem-accept-btn">
+      <a
+        className="goem-accept-btn"
+        href="https://paystack.shop/pay/pwcll5r9mf"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
         &gt; accept &amp; pay
-      </button>
+      </a>
     </>
   )
 }

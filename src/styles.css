@@ -526,6 +526,9 @@ code {
 .goem-accept-btn {
   display: block;
   width: 100%;
+  box-sizing: border-box;
+  text-align: center;
+  text-decoration: none;
   margin-top: 12px;
   font-family: inherit;
   font-size: 14px;
