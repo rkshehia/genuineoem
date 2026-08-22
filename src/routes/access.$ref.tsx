@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Link, createFileRoute, useParams } from '@tanstack/react-router'
+import { useEffect, useRef, useState } from 'react'
+import { Link, createFileRoute, useNavigate, useParams } from '@tanstack/react-router'
 import { api, partImageUrl } from '@/lib/api'
 import { formatDate, formatMoney, type LookupResult } from '@/lib/quote'
 import { normalizeQuoteRef } from '@/lib/quoteRef'
@@ -200,6 +200,28 @@ function QuoteDetails({
   quoteRef: string
   quote: Extract<LookupResult, { status: 'ready' }>['quote']
 }) {
+  const navigate = useNavigate()
+  const [handingOff, setHandingOff] = useState(false)
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (timer.current) clearTimeout(timer.current)
+    }
+  }, [])
+
+  // The payment link opens in its own tab, so this record page is left behind
+  // on the customer's screen. Once the handoff has happened there is nothing
+  // more to do here — send it back to the terminal instead of leaving a stale
+  // quote sitting open.
+  function handleAccept() {
+    if (handingOff) return
+    setHandingOff(true)
+    timer.current = setTimeout(() => {
+      navigate({ to: '/' })
+    }, 1200)
+  }
+
   return (
     <>
       <div className="goem-kv">
@@ -243,9 +265,18 @@ function QuoteDetails({
         href="https://paystack.shop/pay/pwcll5r9mf"
         target="_blank"
         rel="noopener noreferrer"
+        onClick={handleAccept}
+        aria-disabled={handingOff}
       >
-        &gt; accept &amp; pay
+        &gt; {handingOff ? 'payment window opened' : 'accept & pay'}
       </a>
+
+      {handingOff && (
+        <p className="goem-handoff">
+          $ payment opened in a new tab — closing this record and returning to the
+          terminal...
+        </p>
+      )}
     </>
   )
 }

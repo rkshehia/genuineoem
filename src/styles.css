@@ -546,6 +546,17 @@ code {
   border-color: #3fb950;
 }
 
+.goem-accept-btn[aria-disabled='true'] {
+  color: #6e7681;
+  border-color: #30363d;
+  pointer-events: none;
+}
+.goem-handoff {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: #3fb950;
+}
+
 /* --- part photo --- */
 .goem-part-image {
   margin: 18px 0 0;
