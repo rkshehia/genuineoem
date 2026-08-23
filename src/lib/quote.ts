@@ -10,6 +10,12 @@ export type QuoteRequestRecord = {
   createdAt: string | null
 }
 
+/**
+ * A published quote is 'issued' until an admin marks it paid; 'paid' is what
+ * withdraws the payment link from the customer's record.
+ */
+export type QuoteState = 'issued' | 'paid'
+
 export type QuoteRecord = {
   partName: string
   partNo: string
@@ -22,6 +28,7 @@ export type QuoteRecord = {
   totalCost: string
   leadTime: string
   notes: string
+  state: QuoteState
   hasImage: boolean
   updatedAt: string | null
 }

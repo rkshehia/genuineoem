@@ -74,6 +74,10 @@ function AccessQuotePage() {
   const record =
     result && (result.status === 'ready' || result.status === 'processing') ? result : null
 
+  // An admin marking the quote paid is what settles the record: the payment
+  // link comes off it, so there is nothing left for the customer to trigger.
+  const paid = record?.status === 'ready' && record.quote.state === 'paid'
+
   return (
     <div className="goem-page">
       <div className="goem-terminal">
@@ -138,9 +142,15 @@ function AccessQuotePage() {
                     label="state"
                     value={
                       <span
-                        className={`goem-badge ${record.status === 'ready' ? 'ready' : 'pending'}`}
+                        className={`goem-badge ${
+                          paid ? 'paid' : record.status === 'ready' ? 'ready' : 'pending'
+                        }`}
                       >
-                        {record.status === 'ready' ? 'quote issued' : 'processing'}
+                        {paid
+                          ? 'paid'
+                          : record.status === 'ready'
+                            ? 'quote issued'
+                            : 'processing'}
                       </span>
                     }
                   />
@@ -260,22 +270,38 @@ function QuoteDetails({
         </div>
       </div>
 
-      <a
-        className="goem-accept-btn"
-        href="https://paystack.shop/pay/pwcll5r9mf"
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={handleAccept}
-        aria-disabled={handingOff}
-      >
-        &gt; {handingOff ? 'payment window opened' : 'accept & pay'}
-      </a>
+      {/* Once the quote is settled the payment link is gone entirely, rather
+          than disabled: there is nothing left here for the customer to pay. */}
+      {quote.state === 'paid' ? (
+        <div className="goem-log goem-paid-note">
+          <p>
+            <span>200 &gt;</span> payment received — this quote is marked paid
+          </p>
+          <p className="goem-hint">
+            Nothing further is needed from you. We will be in touch about
+            despatch and delivery.
+          </p>
+        </div>
+      ) : (
+        <>
+          <a
+            className="goem-accept-btn"
+            href="https://paystack.shop/pay/pwcll5r9mf"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={handleAccept}
+            aria-disabled={handingOff}
+          >
+            &gt; {handingOff ? 'payment window opened' : 'accept & pay'}
+          </a>
 
-      {handingOff && (
-        <p className="goem-handoff">
-          $ payment opened in a new tab — closing this record and returning to the
-          terminal...
-        </p>
+          {handingOff && (
+            <p className="goem-handoff">
+              $ payment opened in a new tab — closing this record and returning to the
+              terminal...
+            </p>
+          )}
+        </>
       )}
     </>
   )

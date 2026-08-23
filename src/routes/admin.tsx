@@ -414,6 +414,10 @@ function RequestCard({
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
+  const [markingPaid, setMarkingPaid] = useState(false)
+  const [paidError, setPaidError] = useState('')
+
+  const paid = request.quote?.state === 'paid'
 
   if (serverSnapshot !== syncedSnapshot) {
     setSyncedSnapshot(serverSnapshot)
@@ -450,6 +454,30 @@ function RequestCard({
     await onSaved()
   }
 
+  /**
+   * Payment is settled off-site, so the console records it rather than
+   * detecting it. Flipping to 'paid' pulls the accept & pay button off the
+   * customer's record, which also makes it the click to undo when it was
+   * pressed on the wrong row.
+   */
+  const handleTogglePaid = async () => {
+    if (!request.quote || markingPaid) return
+    setMarkingPaid(true)
+    setPaidError('')
+    const res = await fetch(api.adminQuoteState, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ref: request.ref, state: paid ? 'issued' : 'paid' }),
+    })
+    if (!res.ok) {
+      setPaidError(await readError(res, 'could not update the quote state'))
+      setMarkingPaid(false)
+      return
+    }
+    await onSaved()
+    setMarkingPaid(false)
+  }
+
   const handleDelete = async () => {
     setDeleting(true)
     setDeleteError('')
@@ -475,10 +503,15 @@ function RequestCard({
         <span className="goem-req-meta">{request.email}</span>
         <span className="goem-req-meta">{request.phone || 'no phone'}</span>
         <span className="goem-req-meta">{formatDate(request.createdAt)}</span>
-        <span className={`goem-badge ${request.quote ? 'ready' : 'pending'}`}>
-          {request.quote
-            ? formatMoney(request.quote.totalCost, request.quote.currency)
-            : 'awaiting quote'}
+        {/* One grid cell holds both badges, so the row keeps its column count
+            whether or not the quote has been paid. */}
+        <span className="goem-req-badges">
+          <span className={`goem-badge ${request.quote ? 'ready' : 'pending'}`}>
+            {request.quote
+              ? formatMoney(request.quote.totalCost, request.quote.currency)
+              : 'awaiting quote'}
+          </span>
+          {paid && <span className="goem-badge paid">paid</span>}
         </span>
         <span className="goem-req-caret" aria-hidden="true">
           {expanded ? '[-]' : '[+]'}
@@ -625,21 +658,39 @@ function RequestCard({
               </div>
             </div>
 
-            <button type="submit" className="goem-btn" disabled={status === 'saving'}>
-              {status === 'saving'
-                ? '> publishing...'
-                : request.quote
-                  ? '> update published quote'
-                  : '> publish quote'}
-            </button>
+            <div className="goem-form-actions">
+              <button type="submit" className="goem-btn" disabled={status === 'saving'}>
+                {status === 'saving'
+                  ? '> publishing...'
+                  : request.quote
+                    ? '> update published quote'
+                    : '> publish quote'}
+              </button>
+              {request.quote && (
+                <button
+                  type="button"
+                  className={`goem-btn goem-btn-paid${paid ? ' undo' : ''}`}
+                  onClick={handleTogglePaid}
+                  disabled={markingPaid || status === 'saving'}
+                >
+                  {markingPaid
+                    ? '> updating...'
+                    : paid
+                      ? '> mark as unpaid'
+                      : '> mark as paid'}
+                </button>
+              )}
+            </div>
             <p className="goem-hint">
-              Publishing unlocks this reference in access_quote.sh — the customer sees
-              the part details, photo and the full landed cost.
+              {paid
+                ? 'Marked paid — access_quote.sh reports this record as paid and no longer offers the accept & pay button.'
+                : 'Publishing unlocks this reference in access_quote.sh — the customer sees the part details, photo and the full landed cost.'}
             </p>
             {status === 'saved' && (
               <p className="goem-success">$ 200 &gt; quote published for {request.ref}</p>
             )}
             {status === 'error' && <p className="goem-error">$ error: {error}</p>}
+            {paidError && <p className="goem-error">$ error: {paidError}</p>}
           </form>
 
           <div className="goem-danger-zone">

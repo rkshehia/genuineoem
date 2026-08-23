@@ -3,6 +3,7 @@ import { db } from '../../db/index.js'
 import { quoteRequests, quotes } from '../../db/schema.js'
 import { adminGate } from '../lib/auth.js'
 import { json, methodNotAllowed } from '../lib/http.js'
+import { asQuoteState } from '../lib/quoteState.js'
 
 /** Every filed request, newest first, each with its quote if one exists. */
 export default async (req: Request) => {
@@ -44,6 +45,7 @@ async function listRequests() {
               totalCost: quote.totalCost,
               leadTime: quote.leadTime,
               notes: quote.notes,
+              state: asQuoteState(quote.state),
               hasImage: Boolean(quote.imageKey),
               updatedAt: quote.updatedAt,
             }

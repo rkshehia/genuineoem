@@ -52,6 +52,9 @@ export const quotes = pgTable('quotes', {
   totalCost: numeric('total_cost', { precision: 12, scale: 2 }).notNull().default('0'),
   leadTime: text('lead_time').notNull().default(''),
   notes: text().notNull().default(''),
+  // Where the quote has got to: 'issued' until the admin marks it paid, at
+  // which point `access_quote.sh` stops offering the payment link.
+  state: text().notNull().default('issued'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 })
