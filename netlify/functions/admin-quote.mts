@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 import { db } from '../../db/index.js'
 import { quoteRequests, quotes } from '../../db/schema.js'
 import { adminGate } from '../lib/auth.js'
+import { sendQuoteReady } from '../lib/email.js'
 import { json, methodNotAllowed } from '../lib/http.js'
 
 // Netlify caps a synchronous function's request payload at 6MB, so the photo
@@ -144,6 +145,22 @@ async function publish(req: Request) {
   } else {
     await db.insert(quotes).values({ ...row, requestId: request.id })
   }
+
+  // The quote is live for the customer the moment the row lands, so telling
+  // them about it comes after the write and cannot undo it: `sendQuoteReady`
+  // logs and swallows its own failures, leaving the admin with a published
+  // quote rather than an error on a price that did in fact save.
+  await sendQuoteReady({
+    req,
+    ref: request.ref,
+    name: request.name,
+    email: request.email,
+    partName: values.partName,
+    currency: values.currency,
+    totalCost: values.totalCost,
+    leadTime: values.leadTime,
+    updated: Boolean(existing),
+  })
 
   return json({ ok: true, ref: request.ref, published: true })
 }
