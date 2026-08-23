@@ -553,7 +553,10 @@ function RequestCard({
     const res = await fetch(`${api.adminRequest}?ref=${encodeURIComponent(request.ref)}`, {
       method: 'DELETE',
     })
-    if (!res.ok) {
+    // A 404 means the record has already gone — another tab, or a second
+    // click that raced the first. The end state the admin asked for is the one
+    // they have, so it refreshes like a success rather than crying error.
+    if (!res.ok && res.status !== 404) {
       setDeleteError(await readError(res, 'could not delete the request'))
       setConfirmingDelete(false)
       setDeleting(false)

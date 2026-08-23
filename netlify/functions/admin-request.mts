@@ -52,9 +52,26 @@ async function remove(req: Request) {
 
   // Best effort, and deliberately last: an orphaned blob costs nothing, but a
   // blob failure that aborted the delete would leave the record in place.
-  if (quote?.imageKey) {
-    await getStore('part-images').delete(quote.imageKey).catch(() => {})
-  }
+  //
+  // Photos are keyed `<ref>/<timestamp>`, so the whole prefix is swept rather
+  // than just the key on the quote row. Replacing a photo deletes the old blob
+  // on a best-effort basis too, so a replace whose delete failed can leave a
+  // stray behind — this is the last chance to collect it.
+  await deletePartImages(request.ref, quote?.imageKey ?? null)
 
   return json({ ok: true, ref: request.ref, deleted: true })
+}
+
+async function deletePartImages(ref: string, imageKey: string | null) {
+  try {
+    const store = getStore('part-images')
+    const { blobs } = await store.list({ prefix: `${ref}/` })
+    const keys = new Set(blobs.map((blob) => blob.key))
+    // Older photos predate the prefixed key scheme, so the recorded key is
+    // included explicitly rather than assumed to be in the listing.
+    if (imageKey) keys.add(imageKey)
+    await Promise.all([...keys].map((key) => store.delete(key).catch(() => {})))
+  } catch (err) {
+    console.error('part image cleanup failed', ref, err)
+  }
 }
