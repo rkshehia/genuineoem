@@ -1,6 +1,7 @@
 import { db } from '../../db/index.js'
 import { quoteRequests } from '../../db/schema.js'
 import { generateQuoteRef } from '../lib/quoteRef.js'
+import { sendQuoteRequestReceived } from '../lib/email.js'
 import { json, methodNotAllowed } from '../lib/http.js'
 
 const clean = (value: unknown, max: number) =>
@@ -36,18 +37,28 @@ export default async (req: Request) => {
   // References are random, so a clash is vanishingly unlikely — but the column
   // is unique, so retry rather than hand the customer a 500.
   for (let attempt = 0; attempt < 5; attempt++) {
+    let ref: string
     try {
       const [row] = await db
         .insert(quoteRequests)
         .values({ ...values, ref: generateQuoteRef() })
         .returning()
-      return json({ ref: row.ref }, 201)
+      ref = row.ref
     } catch (err) {
       if (attempt === 4) {
         console.error('quote-request insert failed', err)
         return json({ error: 'storage_failed' }, 500)
       }
+      continue
     }
+
+    // Sent outside the retry above on purpose: the enquiry is already stored,
+    // and a throw from in there would be read as a failed insert and write the
+    // request a second time. The confirmation is a courtesy anyway — it logs
+    // and swallows its own failures so a Resend outage cannot cost the
+    // customer their reference.
+    await sendQuoteRequestReceived({ req, ...values, ref })
+    return json({ ref }, 201)
   }
   return json({ error: 'storage_failed' }, 500)
 }

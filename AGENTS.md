@@ -84,6 +84,15 @@ Uploaded to Netlify Blobs (`part-images` store) and served back through the `par
 
 Schema lives in `db/schema.ts`. After any change run `npx drizzle-kit generate --name <change>`; migrations land in `netlify/database/migrations/` and Netlify applies them during the deploy. Never apply them by hand.
 
+### Transactional email
+
+Two emails go out through Resend (`netlify/lib/email.ts`), from `quotes@genuineoems.com` on the verified `genuineoems.com` domain:
+
+1. `quote-request` confirms the enquiry and hands over the `GO-XXXX-XXX` reference.
+2. `admin-quote` tells the customer the quote is priced and ready to view — or updated, if the admin re-published over an existing one.
+
+Both are best effort. `RESEND_API_KEY` unset (the usual case in local dev), an API rejection or a thrown error is logged and swallowed, so no send can fail a quote creation or a publish. Links point at the origin of the request that triggered them, so a deploy preview emails links back to itself rather than to production.
+
 ### Netlify Forms
 
 Forms are now a notification channel, not the system of record — the database is. A form POST that fails does not lose the request.
@@ -103,4 +112,4 @@ npm run dev      # Start dev server
 npm run build    # Production build
 ```
 
-Set `ADMIN_PASSWORD` in the environment to unlock `/admin` locally, and `NETLIFY_API_TOKEN` if you also want the forms inbox to load. Database queries need a provisioned branch, so the full flow only works on a deploy preview.
+Set `ADMIN_PASSWORD` in the environment to unlock `/admin` locally, `NETLIFY_API_TOKEN` if you also want the forms inbox to load, and `RESEND_API_KEY` if you want the quote emails to actually send rather than log a skip. Database queries need a provisioned branch, so the full flow only works on a deploy preview.
