@@ -64,6 +64,11 @@ const ENQUIRY_FIELDS: [string, (request: AdminRequest) => string][] = [
 
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024
 
+// The list is a snapshot taken when the console loads, and enquiries arrive
+// while it sits open — without this it would keep showing yesterday's records
+// until someone thought to reload.
+const REFRESH_MS = 30_000
+
 // Mirrors the parser in netlify/functions/admin-quote.mts so the running total
 // shown here matches what actually gets published. An amount with a second
 // decimal point counts as zero rather than being half-parsed, which makes the
@@ -93,6 +98,11 @@ function AdminPage() {
   )
   const [formsMessage, setFormsMessage] = useState('')
   const [inboxOpen, setInboxOpen] = useState(false)
+  const [syncedAt, setSyncedAt] = useState('')
+  // Which deploy's database the list came from — a preview and production do
+  // not share records, which is the other reason a filed request can be
+  // missing from a console that is otherwise working.
+  const [env, setEnv] = useState<{ context: string; branch: string } | null>(null)
 
   const loadSubmissions = useCallback(async () => {
     try {
@@ -118,29 +128,43 @@ function AdminPage() {
     }
   }, [])
 
-  const loadRequests = useCallback(async () => {
+  /** Pulls the list alone. Reports whether it succeeded, for callers that
+   *  only want to do more work on a healthy response. */
+  const refreshRequests = useCallback(async () => {
     const res = await fetch(api.adminRequests)
     if (res.status === 401) {
       setGate('locked')
-      return
+      return false
     }
     if (res.status === 503) {
       setGate('unconfigured')
-      return
+      return false
     }
     if (!res.ok) {
+      // Whatever is already on screen stays there: a refresh that fails should
+      // read as a warning line, not as every record having vanished.
       setListError(await readError(res, 'could not load requests'))
-      return
+      return false
     }
-    const body = (await res.json()) as { requests: AdminRequest[] }
+    const body = (await res.json()) as {
+      requests: AdminRequest[]
+      env?: { context: string; branch: string }
+    }
     setRequests(body.requests)
+    setEnv(body.env ?? null)
     setListError('')
+    setSyncedAt(new Date().toLocaleTimeString('en-GB'))
     setGate('open')
-    // The inbox is a side panel: a token problem there must not stop the
-    // quote desk from rendering, so it is loaded after and never awaited into
-    // the gate decision.
-    void loadSubmissions()
-  }, [loadSubmissions])
+    return true
+  }, [])
+
+  const loadRequests = useCallback(async () => {
+    // The inbox is a side panel: a token problem there must not stop the quote
+    // desk from rendering, so it is loaded after and never awaited into the
+    // gate decision. It is also kept off the polling path — it calls the
+    // Netlify API, which does not want a request every 30 seconds.
+    if (await refreshRequests()) void loadSubmissions()
+  }, [refreshRequests, loadSubmissions])
 
   useEffect(() => {
     fetch(api.adminSession)
@@ -152,6 +176,24 @@ function AdminPage() {
       })
       .catch(() => setGate('locked'))
   }, [loadRequests])
+
+  // Keeps an open console current. A hidden tab is left alone — it resyncs the
+  // moment it is brought back to the front, which is when anyone could
+  // actually be reading a stale list.
+  useEffect(() => {
+    if (gate !== 'open') return
+    const sync = () => {
+      if (!document.hidden) void refreshRequests()
+    }
+    const timer = setInterval(sync, REFRESH_MS)
+    document.addEventListener('visibilitychange', sync)
+    window.addEventListener('focus', sync)
+    return () => {
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', sync)
+      window.removeEventListener('focus', sync)
+    }
+  }, [gate, refreshRequests])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -184,6 +226,13 @@ function AdminPage() {
         : Boolean(request.quote),
   )
   const pendingCount = requests.filter((request) => !request.quote).length
+  // Shown on the tabs, so a filter that is hiding the record someone is
+  // looking for says so on its own label.
+  const counts = {
+    all: requests.length,
+    pending: pendingCount,
+    quoted: requests.length - pendingCount,
+  }
 
   // Follow-up replies are the ones worth surfacing on the card — the original
   // enquiry is already in the database and shown above them.
@@ -247,6 +296,8 @@ function AdminPage() {
               <p className="goem-status">
                 $ records: {requests.length} | awaiting_quote:{' '}
                 <span className={pendingCount ? '' : 'ok'}>{pendingCount}</span>
+                {syncedAt && ` | synced: ${syncedAt} (auto every 30s)`}
+                {env && ` | env: ${env.context}${env.branch ? `/${env.branch}` : ''}`}
               </p>
               <div className="goem-toolbar">
                 {(['all', 'pending', 'quoted'] as const).map((option) => (
@@ -256,7 +307,7 @@ function AdminPage() {
                     className={`goem-tab${filter === option ? ' active' : ''}`}
                     onClick={() => setFilter(option)}
                   >
-                    [{option}]
+                    [{option} {counts[option]}]
                   </button>
                 ))}
                 <button type="button" className="goem-link-btn" onClick={loadRequests}>
@@ -278,7 +329,25 @@ function AdminPage() {
         {gate === 'open' && (
           <div className="goem-section">
             <p className="goem-label">// quote_requests ({visible.length})</p>
-            {visible.length === 0 && <p className="goem-hint">$ no records in this view.</p>}
+            {visible.length === 0 && (
+              <p className="goem-hint">
+                {requests.length === 0 ? (
+                  '$ no records filed yet.'
+                ) : (
+                  <>
+                    $ no records in this view — {requests.length} hidden by the [{filter}]
+                    filter.{' '}
+                    <button
+                      type="button"
+                      className="goem-link-btn"
+                      onClick={() => setFilter('all')}
+                    >
+                      &gt; show all
+                    </button>
+                  </>
+                )}
+              </p>
+            )}
             <div className="goem-req-list">
               {visible.map((request) => (
                 <RequestCard
@@ -414,6 +483,10 @@ function RequestCard({
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
+  const [markingPaid, setMarkingPaid] = useState(false)
+  const [paidError, setPaidError] = useState('')
+
+  const paid = request.quote?.state === 'paid'
 
   if (serverSnapshot !== syncedSnapshot) {
     setSyncedSnapshot(serverSnapshot)
@@ -450,6 +523,30 @@ function RequestCard({
     await onSaved()
   }
 
+  /**
+   * Payment is settled off-site, so the console records it rather than
+   * detecting it. Flipping to 'paid' pulls the accept & pay button off the
+   * customer's record, which also makes it the click to undo when it was
+   * pressed on the wrong row.
+   */
+  const handleTogglePaid = async () => {
+    if (!request.quote || markingPaid) return
+    setMarkingPaid(true)
+    setPaidError('')
+    const res = await fetch(api.adminQuoteState, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ref: request.ref, state: paid ? 'issued' : 'paid' }),
+    })
+    if (!res.ok) {
+      setPaidError(await readError(res, 'could not update the quote state'))
+      setMarkingPaid(false)
+      return
+    }
+    await onSaved()
+    setMarkingPaid(false)
+  }
+
   const handleDelete = async () => {
     setDeleting(true)
     setDeleteError('')
@@ -475,10 +572,15 @@ function RequestCard({
         <span className="goem-req-meta">{request.email}</span>
         <span className="goem-req-meta">{request.phone || 'no phone'}</span>
         <span className="goem-req-meta">{formatDate(request.createdAt)}</span>
-        <span className={`goem-badge ${request.quote ? 'ready' : 'pending'}`}>
-          {request.quote
-            ? formatMoney(request.quote.totalCost, request.quote.currency)
-            : 'awaiting quote'}
+        {/* One grid cell holds both badges, so the row keeps its column count
+            whether or not the quote has been paid. */}
+        <span className="goem-req-badges">
+          <span className={`goem-badge ${request.quote ? 'ready' : 'pending'}`}>
+            {request.quote
+              ? formatMoney(request.quote.totalCost, request.quote.currency)
+              : 'awaiting quote'}
+          </span>
+          {paid && <span className="goem-badge paid">paid</span>}
         </span>
         <span className="goem-req-caret" aria-hidden="true">
           {expanded ? '[-]' : '[+]'}
@@ -625,21 +727,39 @@ function RequestCard({
               </div>
             </div>
 
-            <button type="submit" className="goem-btn" disabled={status === 'saving'}>
-              {status === 'saving'
-                ? '> publishing...'
-                : request.quote
-                  ? '> update published quote'
-                  : '> publish quote'}
-            </button>
+            <div className="goem-form-actions">
+              <button type="submit" className="goem-btn" disabled={status === 'saving'}>
+                {status === 'saving'
+                  ? '> publishing...'
+                  : request.quote
+                    ? '> update published quote'
+                    : '> publish quote'}
+              </button>
+              {request.quote && (
+                <button
+                  type="button"
+                  className={`goem-btn goem-btn-paid${paid ? ' undo' : ''}`}
+                  onClick={handleTogglePaid}
+                  disabled={markingPaid || status === 'saving'}
+                >
+                  {markingPaid
+                    ? '> updating...'
+                    : paid
+                      ? '> mark as unpaid'
+                      : '> mark as paid'}
+                </button>
+              )}
+            </div>
             <p className="goem-hint">
-              Publishing unlocks this reference in access_quote.sh — the customer sees
-              the part details, photo and the full landed cost.
+              {paid
+                ? 'Marked paid — access_quote.sh reports this record as paid and no longer offers the accept & pay button.'
+                : 'Publishing unlocks this reference in access_quote.sh — the customer sees the part details, photo and the full landed cost.'}
             </p>
             {status === 'saved' && (
               <p className="goem-success">$ 200 &gt; quote published for {request.ref}</p>
             )}
             {status === 'error' && <p className="goem-error">$ error: {error}</p>}
+            {paidError && <p className="goem-error">$ error: {paidError}</p>}
           </form>
 
           <div className="goem-danger-zone">

@@ -477,6 +477,13 @@ code {
   border-color: #9e6a03;
   background: rgba(158, 106, 3, 0.12);
 }
+/* Settled: distinct from the green "priced" badge it sits beside, so a paid
+   row is readable at a glance without the two greens merging. */
+.goem-badge.paid {
+  color: #58a6ff;
+  border-color: #1f6feb;
+  background: rgba(56, 139, 253, 0.12);
+}
 
 .goem-processing p:first-child {
   font-size: 15px;
@@ -484,6 +491,13 @@ code {
 }
 .goem-processing p:first-child span {
   color: #d29922;
+}
+.goem-paid-note {
+  margin-top: 18px;
+}
+.goem-paid-note p:first-child {
+  font-size: 15px;
+  color: #58a6ff;
 }
 
 /* --- cost breakdown --- */
@@ -682,6 +696,13 @@ code {
   color: #6e7681;
   font-size: 12px;
 }
+/* Both status badges share one grid cell, so the summary row keeps its column
+   count whether or not the quote is paid. */
+.goem-req-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 
 /* Collapsed, a card is just its summary row; the detail opens in place. */
 .goem-req-body {
@@ -788,4 +809,33 @@ code {
 }
 .goem-btn.goem-btn-danger:disabled {
   background: #30363d;
+}
+
+/* The publish button and the paid toggle sit on one line, wrapping on narrow
+   screens rather than squeezing. */
+.goem-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.goem-btn.goem-btn-paid {
+  background: #0d1117;
+  color: #58a6ff;
+  border: 1px solid #1f6feb;
+}
+.goem-btn.goem-btn-paid:hover {
+  background: #161b22;
+  border-color: #58a6ff;
+  color: #58a6ff;
+}
+/* Already paid: the button now undoes that, so it steps back visually. */
+.goem-btn.goem-btn-paid.undo {
+  color: #8b949e;
+  border-color: #30363d;
+}
+.goem-btn.goem-btn-paid:disabled {
+  background: #30363d;
+  color: #6e7681;
+  border-color: #30363d;
 }

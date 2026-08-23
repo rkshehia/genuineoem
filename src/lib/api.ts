@@ -10,6 +10,7 @@ export const api = {
   adminRequests: `${BASE}/admin-requests`,
   adminRequest: `${BASE}/admin-request`,
   adminQuote: `${BASE}/admin-quote`,
+  adminQuoteState: `${BASE}/admin-quote-state`,
   adminSubmissions: `${BASE}/admin-submissions`,
   partImage: `${BASE}/part-image`,
 }
