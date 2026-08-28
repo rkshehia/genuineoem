@@ -14,12 +14,12 @@ export const Route = createRootRoute({
         content: 'width=device-width, initial-scale=1',
       },
       {
-        title: 'GENUINE_OEM // Parts Access — BMW & Land Rover',
+        title: 'GENUINE_OEM // Parts Access — Land Rover',
       },
       {
         name: 'description',
         content:
-          'Verified BMW and Land Rover OEM parts, wholesale-sourced and UK dispatched with Kenya delivery.',
+          'Verified Land Rover OEM parts, wholesale-sourced and UK dispatched with Kenya delivery.',
       },
     ],
     links: [
