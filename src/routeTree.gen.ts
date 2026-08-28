@@ -9,10 +9,16 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as PaymentCallbackRouteImport } from './routes/payment-callback'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccessRefRouteImport } from './routes/access.$ref'
 
+const PaymentCallbackRoute = PaymentCallbackRouteImport.update({
+  id: '/payment-callback',
+  path: '/payment-callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -32,35 +38,46 @@ const AccessRefRoute = AccessRefRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/payment-callback': typeof PaymentCallbackRoute
   '/access/$ref': typeof AccessRefRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/payment-callback': typeof PaymentCallbackRoute
   '/access/$ref': typeof AccessRefRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/payment-callback': typeof PaymentCallbackRoute
   '/access/$ref': typeof AccessRefRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/access/$ref'
+  fullPaths: '/' | '/admin' | '/payment-callback' | '/access/$ref'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/access/$ref'
-  id: '__root__' | '/' | '/admin' | '/access/$ref'
+  to: '/' | '/admin' | '/payment-callback' | '/access/$ref'
+  id: '__root__' | '/' | '/admin' | '/payment-callback' | '/access/$ref'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
+  PaymentCallbackRoute: typeof PaymentCallbackRoute
   AccessRefRoute: typeof AccessRefRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/payment-callback': {
+      id: '/payment-callback'
+      path: '/payment-callback'
+      fullPath: '/payment-callback'
+      preLoaderRoute: typeof PaymentCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin': {
       id: '/admin'
       path: '/admin'
@@ -88,6 +105,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
+  PaymentCallbackRoute: PaymentCallbackRoute,
   AccessRefRoute: AccessRefRoute,
 }
 export const routeTree = rootRouteImport

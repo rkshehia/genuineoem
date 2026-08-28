@@ -68,6 +68,31 @@ API calls go to the reserved `/.netlify/functions/*` paths — see `src/lib/api.
 3. Until an admin publishes, `quote-lookup` returns `status: processing` and the page reports that the order is still being processed.
 4. Publishing from `/admin` writes a `quotes` row (via `admin-quote`); its existence is the published flag, and the customer immediately sees part details, photo and landed cost.
 
+### Payments
+
+`initiate-payment` opens a real Paystack transaction when the customer presses
+"accept & pay" on a freight card. The browser sends only `quote_reference` and
+`freight_method` — the amount is recalculated in the function from the stored
+part cost, that option's freight and duties, so nothing in the request body can
+move what is charged. The chosen method and a per-attempt transaction reference
+are written to the quote before the handoff, then the `authorization_url` goes
+back for the browser to redirect to.
+
+There is no static-payment-page fallback. With `PAYSTACK_SECRET_KEY` unset the
+function answers 503 `payments_unconfigured` and the record says payments are
+not configured yet: a hosted page cannot carry the amount, so it would take
+money nobody could reconcile against a quote. A Paystack rejection (most likely
+an unsupported currency — it takes NGN, KES, USD, GHS, ZAR and a few more, not
+GBP) comes back as 502 with Paystack's own message.
+
+Paystack returns the customer to `/payment-callback?reference=...`, which calls
+`verify-payment`. That reference is the only thing trusted from the browser:
+the quote is found by the reference we minted, the transaction is read back from
+Paystack's `/transaction/verify/:reference`, and the quote is marked paid only
+when Paystack reports success *and* the amount and currency match the published
+landed cost. Anything else leaves the quote issued so the customer can retry.
+Both endpoints share `netlify/lib/paystack.ts`.
+
 ### Admin access
 
 The console is gated by a single shared password in the `ADMIN_PASSWORD` environment variable, exchanged for a signed, HttpOnly session cookie (12h). With the variable unset the admin API returns 503 and the console stays locked — it never falls open.

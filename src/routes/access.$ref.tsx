@@ -234,34 +234,44 @@ function QuoteDetails({
   )
 
   /**
-   * The browser sends only which option was accepted. The amount is worked out
-   * server-side from the published price, which also records the choice against
-   * the order before handing over to Paystack.
+   * The browser sends only which option was accepted. The amount is
+   * recalculated server-side from the published price, which also opens the
+   * Paystack transaction and records the choice and its reference against the
+   * order before handing over.
    */
   async function handleAccept(method: FreightMethod) {
     if (handingOff) return
     setHandingOff(method)
     setError('')
     try {
-      const res = await fetch(api.paystackAccept, {
+      const res = await fetch(api.initiatePayment, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ref: quoteRef, method }),
+        body: JSON.stringify({ quote_reference: quoteRef, freight_method: method }),
       })
       if (!res.ok) {
-        setError(await readError(res, 'could not open payment'))
+        // A site with no Paystack key answers 503: that is a configuration gap
+        // rather than something the customer can retry their way out of, so it
+        // gets its own wording.
+        const body = (await res.clone().json().catch(() => null)) as { error?: string } | null
+        setError(
+          body?.error === 'payments_unconfigured'
+            ? 'payments not yet configured — contact us and we will take payment directly'
+            : await readError(res, 'could not open payment'),
+        )
         setHandingOff(null)
         return
       }
-      const body = (await res.json()) as { url?: string }
-      if (!body.url) {
+      const body = (await res.json()) as { authorization_url?: string }
+      if (!body.authorization_url) {
         setError('could not open payment — try again in a moment')
         setHandingOff(null)
         return
       }
-      // Payment runs in this tab: the transaction sends the customer back to
-      // this record when it settles, so there is no window to leave behind.
-      window.location.assign(body.url)
+      // Payment runs in this tab: the transaction sends the customer to
+      // /payment-callback when it settles, which verifies it and points them
+      // back at this record.
+      window.location.assign(body.authorization_url)
     } catch {
       setError('could not reach the payment service — check your connection')
       setHandingOff(null)
