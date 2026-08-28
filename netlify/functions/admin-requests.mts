@@ -4,7 +4,7 @@ import { db } from '../../db/index.js'
 import { quoteRequests, quotes } from '../../db/schema.js'
 import { adminGate } from '../lib/auth.js'
 import { json, methodNotAllowed } from '../lib/http.js'
-import { asQuoteState } from '../lib/quoteState.js'
+import { quotePayload } from '../lib/quoteView.js'
 
 /**
  * Drizzle reports a failed query by putting the whole SQL statement in the
@@ -63,29 +63,9 @@ async function listRequests() {
       context: process.env.CONTEXT ?? 'dev',
       branch: process.env.BRANCH ?? '',
     },
-    requests: rows.map((row) => {
-      const quote = row.quotes
-      return {
-        ...row.quote_requests,
-        quote: quote
-          ? {
-              partName: quote.partName,
-              partNo: quote.partNo,
-              vin: quote.vin,
-              details: quote.details,
-              currency: quote.currency,
-              partCost: quote.partCost,
-              shippingCost: quote.shippingCost,
-              dutiesCost: quote.dutiesCost,
-              totalCost: quote.totalCost,
-              leadTime: quote.leadTime,
-              notes: quote.notes,
-              state: asQuoteState(quote.state),
-              hasImage: Boolean(quote.imageKey),
-              updatedAt: quote.updatedAt,
-            }
-          : null,
-      }
-    }),
+    requests: rows.map((row) => ({
+      ...row.quote_requests,
+      quote: row.quotes ? quotePayload(row.quotes) : null,
+    })),
   })
 }

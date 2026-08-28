@@ -16,6 +16,27 @@ export type QuoteRequestRecord = {
  */
 export type QuoteState = 'issued' | 'paid'
 
+/**
+ * How the part travels. Mirrors `FreightMethod` in netlify/lib/freight.ts.
+ */
+export type FreightMethod = 'air' | 'sea'
+
+export const FREIGHT_METHODS = ['air', 'sea'] as const
+
+/**
+ * Fixed commitments per option, not a figure calculated per quote. Mirrors
+ * `FREIGHT_LEAD_TIMES` in netlify/lib/freight.ts.
+ */
+export const FREIGHT_LEAD_TIMES: Record<FreightMethod, string> = {
+  air: '2-12 business days',
+  sea: '40-45 days',
+}
+
+export const FREIGHT_LABELS: Record<FreightMethod, string> = {
+  air: 'air_freight',
+  sea: 'sea_freight',
+}
+
 export type QuoteRecord = {
   partName: string
   partNo: string
@@ -23,10 +44,22 @@ export type QuoteRecord = {
   details: string
   currency: string
   partCost: string
-  shippingCost: string
+  /**
+   * Sea freight. Stored in the `shipping_cost` column, which predates there
+   * being a second option — the rename lives in this name.
+   */
+  seaFreightCost: string
+  /** Null on quotes priced before air freight was offered. */
+  airFreightCost: string | null
   dutiesCost: string
+  /** The sea landed cost, as stored. Equal to `landedCostSea`. */
   totalCost: string
-  leadTime: string
+  /** part + sea freight + duties, worked out server-side. */
+  landedCostSea: string
+  /** part + air freight + duties, or null when there is no air figure. */
+  landedCostAir: string | null
+  /** Which option the customer accepted, null until they start payment. */
+  freightMethod: FreightMethod | null
   notes: string
   state: QuoteState
   hasImage: boolean

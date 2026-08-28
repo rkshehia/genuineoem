@@ -47,11 +47,30 @@ export const quotes = pgTable('quotes', {
   imageType: text('image_type'),
   currency: text().notNull().default('GBP'),
   partCost: numeric('part_cost', { precision: 12, scale: 2 }).notNull().default('0'),
-  shippingCost: numeric('shipping_cost', { precision: 12, scale: 2 }).notNull().default('0'),
+  // Sea freight. The column is still named `shipping_cost` — it predates there
+  // being a second freight option, and renaming a column an applied migration
+  // created buys nothing, so the rename lives here in the property name.
+  seaFreightCost: numeric('shipping_cost', { precision: 12, scale: 2 })
+    .notNull()
+    .default('0'),
+  // Air freight, deliberately nullable: quotes priced before air was offered
+  // have no figure, and a null is what tells the customer's record to draw the
+  // sea option alone rather than an air card reading zero.
+  airFreightCost: numeric('air_freight_cost', { precision: 12, scale: 2 }),
   dutiesCost: numeric('duties_cost', { precision: 12, scale: 2 }).notNull().default('0'),
+  // The sea landed cost: part + sea freight + duties. Kept as `total_cost` so
+  // rows written before air freight existed still read correctly. The air
+  // landed cost is derived from `airFreightCost` rather than stored, so the two
+  // can never drift apart.
   totalCost: numeric('total_cost', { precision: 12, scale: 2 }).notNull().default('0'),
   leadTime: text('lead_time').notNull().default(''),
   notes: text().notNull().default(''),
+  // Which freight option the customer accepted, recorded when they start
+  // payment. Null until then.
+  freightMethod: text('freight_method'),
+  // The Paystack transaction reference for that attempt, so a payment can be
+  // tied back to this record.
+  paymentRef: text('payment_ref'),
   // Where the quote has got to: 'issued' until the admin marks it paid, at
   // which point `access_quote.sh` stops offering the payment link.
   state: text().notNull().default('issued'),

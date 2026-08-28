@@ -4,6 +4,7 @@ import { db } from '../../db/index.js'
 import { quoteRequests, quotes } from '../../db/schema.js'
 import { adminGate } from '../lib/auth.js'
 import { sendQuoteReady } from '../lib/email.js'
+import { landedCosts } from '../lib/freight.js'
 import { json, methodNotAllowed } from '../lib/http.js'
 
 // Netlify caps a synchronous function's request payload at 6MB, so the photo
@@ -34,6 +35,22 @@ const money = (form: FormData, key: string) => {
   const parsed = Number.parseFloat(raw)
   if (!Number.isFinite(parsed) || parsed < 0 || parsed > MAX_AMOUNT) return null
   return parsed
+}
+
+/**
+ * Air freight, where left blank is meaningful: the option is not offered at
+ * all, rather than offered at nothing. Blank stores a null, which is what makes
+ * the customer's record fall back to the sea card on its own. Otherwise it
+ * validates exactly as every other amount does — `INVALID` keeps the misparsed
+ * decimal rejection rather than letting `1.250.00` through as 1.25.
+ */
+const INVALID = Symbol('invalid_amount')
+
+const optionalMoney = (form: FormData, key: string) => {
+  const raw = text(form, key, 32)
+  if (!raw.replace(/[^0-9.]/g, '')) return null
+  const parsed = money(form, key)
+  return parsed === null ? INVALID : parsed
 }
 
 /**
@@ -72,10 +89,16 @@ async function publish(req: Request) {
   if (!request) return json({ error: 'unknown_request' }, 404)
 
   const partCost = money(form, 'partCost')
-  const shippingCost = money(form, 'shippingCost')
+  const seaFreightCost = money(form, 'seaFreightCost')
   const dutiesCost = money(form, 'dutiesCost')
+  const airFreightCost = optionalMoney(form, 'airFreightCost')
 
-  if (partCost === null || shippingCost === null || dutiesCost === null) {
+  if (
+    partCost === null ||
+    seaFreightCost === null ||
+    dutiesCost === null ||
+    airFreightCost === INVALID
+  ) {
     return json(
       {
         error: 'invalid_amount',
@@ -92,10 +115,13 @@ async function publish(req: Request) {
     details: text(form, 'details', 4000),
     currency: text(form, 'currency', 8) || 'GBP',
     partCost: partCost.toFixed(2),
-    shippingCost: shippingCost.toFixed(2),
+    seaFreightCost: seaFreightCost.toFixed(2),
+    airFreightCost: airFreightCost === null ? null : airFreightCost.toFixed(2),
     dutiesCost: dutiesCost.toFixed(2),
-    totalCost: (partCost + shippingCost + dutiesCost).toFixed(2),
-    leadTime: text(form, 'leadTime', 120),
+    // The stored total stays the sea landed cost. The air figure is derived
+    // from `airFreightCost` wherever it is shown, so there is no second total
+    // to keep in step.
+    totalCost: (partCost + seaFreightCost + dutiesCost).toFixed(2),
     notes: text(form, 'notes', 2000),
     updatedAt: new Date(),
   }
@@ -157,8 +183,8 @@ async function publish(req: Request) {
     email: request.email,
     partName: values.partName,
     currency: values.currency,
-    totalCost: values.totalCost,
-    leadTime: values.leadTime,
+    landedCostSea: values.totalCost,
+    landedCostAir: landedCosts(values).air,
     updated: Boolean(existing),
   })
 

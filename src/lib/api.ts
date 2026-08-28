@@ -12,6 +12,7 @@ export const api = {
   adminQuote: `${BASE}/admin-quote`,
   adminQuoteState: `${BASE}/admin-quote-state`,
   adminSubmissions: `${BASE}/admin-submissions`,
+  paystackAccept: `${BASE}/paystack-accept`,
   partImage: `${BASE}/part-image`,
 }
 

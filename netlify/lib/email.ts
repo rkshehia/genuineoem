@@ -1,4 +1,5 @@
 import { Resend } from 'resend'
+import { FREIGHT_LEAD_TIMES } from './freight.js'
 
 /**
  * Transactional email for the quote workflow, sent through Resend from the
@@ -206,8 +207,10 @@ type QuoteReady = {
   email: string
   partName: string
   currency: string
-  totalCost: string
-  leadTime: string
+  /** Landed cost by sea: part + sea freight + duties. */
+  landedCostSea: string
+  /** Landed cost by air, or null when the quote does not offer air freight. */
+  landedCostAir: string | null
   /** A re-publish over an existing quote, i.e. the price changed. */
   updated: boolean
 }
@@ -221,37 +224,40 @@ export async function sendQuoteReady(args: QuoteReady) {
   const { req, ref, name, email, updated } = args
   const accessUrl = `${siteUrl(req)}/access/${encodeURIComponent(ref)}`
   const greeting = firstName(name) ? `Hi ${firstName(name)},` : 'Hi,'
-  const total = money(args.totalCost, args.currency)
+  const sea = money(args.landedCostSea, args.currency)
+  const air = args.landedCostAir ? money(args.landedCostAir, args.currency) : ''
   const headline = updated
     ? 'Your quote has been updated and is ready to view.'
     : 'Your quote is priced and ready to view.'
 
+  // Both freight options, so the choice waiting on the record is visible from
+  // the email. A quote with no air figure simply lists the one option.
   const details = [
     line('PART', args.partName),
-    line('LANDED TOTAL', total),
-    line('LEAD TIME', args.leadTime),
+    air ? line(`AIR FREIGHT (${FREIGHT_LEAD_TIMES.air})`, air) : '',
+    line(`SEA FREIGHT (${FREIGHT_LEAD_TIMES.sea})`, sea),
   ]
     .filter(Boolean)
     .join('')
 
   const html = shell(`
           <p style="margin:0 0 12px;">${esc(greeting)}</p>
-          <p style="margin:0 0 12px;">${esc(headline)} The figure below is the full landed cost — part, shipping and duties included.</p>
+          <p style="margin:0 0 12px;">${esc(headline)} ${air ? 'Each figure below is a full landed cost' : 'The figure below is the full landed cost'} — part, freight and duties included.</p>
           ${refBlock(ref)}
           <table role="presentation" cellpadding="0" cellspacing="0">${details}</table>
-          <p style="margin:16px 0 0;">Open your record to see the full breakdown, the part photo, and to accept the quote.</p>
+          <p style="margin:16px 0 0;">Open your record to see the full breakdown, the part photo, and to accept ${air ? 'whichever option suits you' : 'the quote'}.</p>
           ${button(accessUrl, 'VIEW & ACCEPT QUOTE')}
           <p style="margin:0;color:#5f7a63;font-size:12px;">If the button doesn't work, go to ${esc(siteUrl(req))}, run access_quote.sh and enter ${esc(ref)}.</p>`)
 
   const text = [
     greeting,
     '',
-    `${headline} The total below is the full landed cost — part, shipping and duties included.`,
+    `${headline} ${air ? 'Each total below is a full landed cost' : 'The total below is the full landed cost'} — part, freight and duties included.`,
     '',
     `Quote reference: ${ref}`,
     args.partName ? `Part: ${args.partName}` : '',
-    `Landed total: ${total}`,
-    args.leadTime ? `Lead time: ${args.leadTime}` : '',
+    air ? `Air freight (${FREIGHT_LEAD_TIMES.air}): ${air}` : '',
+    `Sea freight (${FREIGHT_LEAD_TIMES.sea}): ${sea}`,
     '',
     `View and accept your quote: ${accessUrl}`,
     '',
