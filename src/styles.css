@@ -537,6 +537,78 @@ code {
   font-weight: 700;
 }
 
+/* --- freight options ---
+   Two terminal panels side by side, each a self-contained offer: landed cost,
+   lead time and its own payment button. The title sits on the top border with
+   the section background punched out behind it, which is what draws the
+   `┌─ air_freight ──┐` chrome without any box characters to wrap on a narrow
+   screen. A quote with no air freight renders one panel, full width. */
+.goem-freight-intro {
+  margin: 24px 0 22px;
+}
+.goem-freight-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+.goem-freight-grid.single {
+  grid-template-columns: 1fr;
+}
+@media (max-width: 700px) {
+  .goem-freight-grid {
+    grid-template-columns: 1fr;
+    gap: 26px;
+  }
+}
+.goem-freight-card {
+  position: relative;
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 22px 16px 16px;
+}
+.goem-freight-head {
+  position: absolute;
+  top: -8px;
+  left: 12px;
+  margin: 0;
+  padding: 0 8px;
+  /* The section this sits in, so the label reads as a gap in the border. */
+  background: #0d1117;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  color: #58a6ff;
+}
+.goem-freight-key {
+  margin: 0;
+  font-size: 12px;
+  color: #6e7681;
+}
+.goem-freight-key + .goem-freight-value {
+  margin: 5px 0 0;
+}
+.goem-freight-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: #3fb950;
+}
+.goem-freight-value + .goem-freight-key {
+  margin-top: 16px;
+}
+.goem-freight-value.lead {
+  font-size: 14px;
+  font-weight: 400;
+  color: #c9d1d9;
+}
+.goem-freight-card .goem-accept-btn {
+  margin-top: 20px;
+}
+.goem-freight-note {
+  margin-top: 16px;
+}
+
 .goem-accept-btn {
   display: block;
   width: 100%;
@@ -560,15 +632,13 @@ code {
   border-color: #3fb950;
 }
 
-.goem-accept-btn[aria-disabled='true'] {
+.goem-accept-btn[aria-disabled='true'],
+.goem-accept-btn:disabled {
   color: #6e7681;
   border-color: #30363d;
+  background: #0d1117;
+  cursor: not-allowed;
   pointer-events: none;
-}
-.goem-handoff {
-  margin: 10px 0 0;
-  font-size: 12px;
-  color: #3fb950;
 }
 
 /* --- part photo --- */

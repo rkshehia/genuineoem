@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 import { db } from '../../db/index.js'
 import { quoteRequests, quotes } from '../../db/schema.js'
 import { normalizeQuoteRef } from '../lib/quoteRef.js'
-import { asQuoteState } from '../lib/quoteState.js'
+import { quotePayload } from '../lib/quoteView.js'
 import { json, methodNotAllowed } from '../lib/http.js'
 
 /**
@@ -56,21 +56,6 @@ async function lookup(req: Request) {
   return json({
     status: 'ready',
     request: requestPayload,
-    quote: {
-      partName: quote.partName,
-      partNo: quote.partNo,
-      vin: quote.vin,
-      details: quote.details,
-      currency: quote.currency,
-      partCost: quote.partCost,
-      shippingCost: quote.shippingCost,
-      dutiesCost: quote.dutiesCost,
-      totalCost: quote.totalCost,
-      leadTime: quote.leadTime,
-      notes: quote.notes,
-      state: asQuoteState(quote.state),
-      hasImage: Boolean(quote.imageKey),
-      updatedAt: quote.updatedAt,
-    },
+    quote: quotePayload(quote),
   })
 }

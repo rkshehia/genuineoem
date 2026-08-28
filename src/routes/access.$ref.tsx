@@ -1,7 +1,15 @@
-import { useEffect, useRef, useState } from 'react'
-import { Link, createFileRoute, useNavigate, useParams } from '@tanstack/react-router'
-import { api, partImageUrl } from '@/lib/api'
-import { formatDate, formatMoney, type LookupResult } from '@/lib/quote'
+import { useEffect, useState } from 'react'
+import { Link, createFileRoute, useParams } from '@tanstack/react-router'
+import { api, partImageUrl, readError } from '@/lib/api'
+import {
+  FREIGHT_LABELS,
+  FREIGHT_LEAD_TIMES,
+  FREIGHT_METHODS,
+  formatDate,
+  formatMoney,
+  type FreightMethod,
+  type LookupResult,
+} from '@/lib/quote'
 import { normalizeQuoteRef } from '@/lib/quoteRef'
 
 export const Route = createFileRoute('/access/$ref')({
@@ -210,26 +218,54 @@ function QuoteDetails({
   quoteRef: string
   quote: Extract<LookupResult, { status: 'ready' }>['quote']
 }) {
-  const navigate = useNavigate()
-  const [handingOff, setHandingOff] = useState(false)
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Which option is being handed off, so only the button that was pressed
+  // reports itself as busy.
+  const [handingOff, setHandingOff] = useState<FreightMethod | null>(null)
+  const [error, setError] = useState('')
 
-  useEffect(() => {
-    return () => {
-      if (timer.current) clearTimeout(timer.current)
-    }
-  }, [])
+  // Air is dropped entirely when the quote carries no air figure — a quote
+  // priced before air freight was offered shows the sea option alone, at full
+  // width, rather than a card reading nothing.
+  const options = FREIGHT_METHODS.map((method) => ({
+    method,
+    landedCost: method === 'air' ? quote.landedCostAir : quote.landedCostSea,
+  })).filter((option): option is { method: FreightMethod; landedCost: string } =>
+    option.landedCost !== null,
+  )
 
-  // The payment link opens in its own tab, so this record page is left behind
-  // on the customer's screen. Once the handoff has happened there is nothing
-  // more to do here — send it back to the terminal instead of leaving a stale
-  // quote sitting open.
-  function handleAccept() {
+  /**
+   * The browser sends only which option was accepted. The amount is worked out
+   * server-side from the published price, which also records the choice against
+   * the order before handing over to Paystack.
+   */
+  async function handleAccept(method: FreightMethod) {
     if (handingOff) return
-    setHandingOff(true)
-    timer.current = setTimeout(() => {
-      navigate({ to: '/' })
-    }, 1200)
+    setHandingOff(method)
+    setError('')
+    try {
+      const res = await fetch(api.paystackAccept, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ref: quoteRef, method }),
+      })
+      if (!res.ok) {
+        setError(await readError(res, 'could not open payment'))
+        setHandingOff(null)
+        return
+      }
+      const body = (await res.json()) as { url?: string }
+      if (!body.url) {
+        setError('could not open payment — try again in a moment')
+        setHandingOff(null)
+        return
+      }
+      // Payment runs in this tab: the transaction sends the customer back to
+      // this record when it settles, so there is no window to leave behind.
+      window.location.assign(body.url)
+    } catch {
+      setError('could not reach the payment service — check your connection')
+      setHandingOff(null)
+    }
   }
 
   return (
@@ -238,7 +274,6 @@ function QuoteDetails({
         <Row label="part" value={quote.partName} />
         <Row label="part_no" value={quote.partNo} />
         <Row label="vin" value={quote.vin} />
-        <Row label="lead_time" value={quote.leadTime} />
         <Row label="details" value={quote.details} />
         <Row label="notes" value={quote.notes} />
         <Row label="issued" value={formatDate(quote.updatedAt)} />
@@ -256,26 +291,29 @@ function QuoteDetails({
           <span>part_cost</span>
           <span>{formatMoney(quote.partCost, quote.currency)}</span>
         </div>
+        {quote.airFreightCost !== null && (
+          <div className="goem-cost-row">
+            <span>air_freight</span>
+            <span>{formatMoney(quote.airFreightCost, quote.currency)}</span>
+          </div>
+        )}
         <div className="goem-cost-row">
-          <span>shipping</span>
-          <span>{formatMoney(quote.shippingCost, quote.currency)}</span>
+          <span>sea_freight</span>
+          <span>{formatMoney(quote.seaFreightCost, quote.currency)}</span>
         </div>
         <div className="goem-cost-row">
           <span>customs_duties</span>
           <span>{formatMoney(quote.dutiesCost, quote.currency)}</span>
         </div>
-        <div className="goem-cost-row goem-cost-total">
-          <span>total_landed_cost</span>
-          <span>{formatMoney(quote.totalCost, quote.currency)}</span>
-        </div>
       </div>
 
-      {/* Once the quote is settled the payment link is gone entirely, rather
-          than disabled: there is nothing left here for the customer to pay. */}
+      {/* Once the quote is settled the payment options are gone entirely,
+          rather than disabled: there is nothing left here to pay. */}
       {quote.state === 'paid' ? (
         <div className="goem-log goem-paid-note">
           <p>
             <span>200 &gt;</span> payment received — this quote is marked paid
+            {quote.freightMethod ? ` (${FREIGHT_LABELS[quote.freightMethod]})` : ''}
           </p>
           <p className="goem-hint">
             Nothing further is needed from you. We will be in touch about
@@ -284,23 +322,36 @@ function QuoteDetails({
         </div>
       ) : (
         <>
-          <a
-            className="goem-accept-btn"
-            href="https://paystack.shop/pay/pwcll5r9mf"
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={handleAccept}
-            aria-disabled={handingOff}
-          >
-            &gt; {handingOff ? 'payment window opened' : 'accept & pay'}
-          </a>
+          <p className="goem-label goem-freight-intro">
+            // shipping_options — pick one to pay
+          </p>
+          <div className={`goem-freight-grid${options.length === 1 ? ' single' : ''}`}>
+            {options.map(({ method, landedCost }) => (
+              <section className="goem-freight-card" key={method}>
+                <h2 className="goem-freight-head">{FREIGHT_LABELS[method]}</h2>
+                <p className="goem-freight-key">$ landed_cost</p>
+                <p className="goem-freight-value">
+                  {formatMoney(landedCost, quote.currency)}
+                </p>
+                <p className="goem-freight-key">$ lead_time</p>
+                <p className="goem-freight-value lead">{FREIGHT_LEAD_TIMES[method]}</p>
+                <button
+                  type="button"
+                  className="goem-accept-btn"
+                  onClick={() => handleAccept(method)}
+                  disabled={handingOff !== null}
+                >
+                  &gt; {handingOff === method ? 'opening payment...' : 'accept & pay'}
+                </button>
+              </section>
+            ))}
+          </div>
 
-          {handingOff && (
-            <p className="goem-handoff">
-              $ payment opened in a new tab — closing this record and returning to the
-              terminal...
-            </p>
-          )}
+          <p className="goem-hint goem-freight-note">
+            Each landed cost is everything in — part, that option&apos;s freight and
+            customs duties. Payment opens in this window.
+          </p>
+          {error && <p className="goem-error">$ error: {error}</p>}
         </>
       )}
     </>

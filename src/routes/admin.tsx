@@ -3,6 +3,7 @@ import { Link, createFileRoute } from '@tanstack/react-router'
 import { api, partImageUrl, readError } from '@/lib/api'
 import {
   CURRENCIES,
+  FREIGHT_LEAD_TIMES,
   formatDate,
   formatMoney,
   type FormSubmission,
@@ -32,9 +33,10 @@ type QuoteDraft = {
   details: string
   currency: string
   partCost: string
-  shippingCost: string
+  seaFreightCost: string
+  /** Left blank when this quote is not offered by air. */
+  airFreightCost: string
   dutiesCost: string
-  leadTime: string
   notes: string
 }
 
@@ -45,9 +47,11 @@ const draftFrom = (request: AdminRequest): QuoteDraft => ({
   details: request.quote?.details ?? '',
   currency: request.quote?.currency ?? 'GBP',
   partCost: request.quote?.partCost ?? '',
-  shippingCost: request.quote?.shippingCost ?? '',
+  seaFreightCost: request.quote?.seaFreightCost ?? '',
+  // A null air figure is a quote that does not offer air freight, and an empty
+  // input is how that is expressed here — the two have to map onto each other.
+  airFreightCost: request.quote?.airFreightCost ?? '',
   dutiesCost: request.quote?.dutiesCost ?? '',
-  leadTime: request.quote?.leadTime ?? '',
   notes: request.quote?.notes ?? '',
 })
 
@@ -494,8 +498,13 @@ function RequestCard({
     setRemoveImage(false)
   }
 
-  const total =
-    toNumber(draft.partCost) + toNumber(draft.shippingCost) + toNumber(draft.dutiesCost)
+  // One preview per option, matching what the customer will be offered. Air is
+  // absent rather than zero when the field is blank.
+  const base = toNumber(draft.partCost) + toNumber(draft.dutiesCost)
+  const landedSea = base + toNumber(draft.seaFreightCost)
+  const landedAir = draft.airFreightCost.trim()
+    ? base + toNumber(draft.airFreightCost)
+    : null
 
   const set = (key: keyof QuoteDraft) => (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
@@ -583,6 +592,11 @@ function RequestCard({
               ? formatMoney(request.quote.totalCost, request.quote.currency)
               : 'awaiting quote'}
           </span>
+          {/* Which option the customer took, once they have started payment —
+              the shipping method the order has to be fulfilled by. */}
+          {request.quote?.freightMethod && (
+            <span className="goem-badge ready">{request.quote.freightMethod} freight</span>
+          )}
           {paid && <span className="goem-badge paid">paid</span>}
         </span>
         <span className="goem-req-caret" aria-hidden="true">
@@ -630,14 +644,6 @@ function RequestCard({
                 <span>vin</span>
                 <input value={draft.vin} onChange={set('vin')} />
               </label>
-              <label className="goem-field">
-                <span>lead_time</span>
-                <input
-                  value={draft.leadTime}
-                  onChange={set('leadTime')}
-                  placeholder="7–10 working days"
-                />
-              </label>
               <label className="goem-field goem-field-wide">
                 <span>details</span>
                 <textarea value={draft.details} onChange={set('details')} rows={3} />
@@ -663,12 +669,21 @@ function RequestCard({
                 />
               </label>
               <label className="goem-field">
-                <span>shipping_cost</span>
+                <span>sea_freight_cost</span>
                 <input
                   inputMode="decimal"
-                  value={draft.shippingCost}
-                  onChange={set('shippingCost')}
+                  value={draft.seaFreightCost}
+                  onChange={set('seaFreightCost')}
                   placeholder="0.00"
+                />
+              </label>
+              <label className="goem-field">
+                <span>air_freight_cost</span>
+                <input
+                  inputMode="decimal"
+                  value={draft.airFreightCost}
+                  onChange={set('airFreightCost')}
+                  placeholder="leave blank — sea only"
                 />
               </label>
               <label className="goem-field">
@@ -724,9 +739,15 @@ function RequestCard({
             )}
 
             <div className="goem-costs">
+              {landedAir !== null && (
+                <div className="goem-cost-row goem-cost-total">
+                  <span>landed_cost_air ({FREIGHT_LEAD_TIMES.air})</span>
+                  <span>{formatMoney(landedAir, draft.currency)}</span>
+                </div>
+              )}
               <div className="goem-cost-row goem-cost-total">
-                <span>total_landed_cost</span>
-                <span>{formatMoney(total, draft.currency)}</span>
+                <span>landed_cost_sea ({FREIGHT_LEAD_TIMES.sea})</span>
+                <span>{formatMoney(landedSea, draft.currency)}</span>
               </div>
             </div>
 
@@ -756,7 +777,7 @@ function RequestCard({
             <p className="goem-hint">
               {paid
                 ? 'Marked paid — access_quote.sh reports this record as paid and no longer offers the accept & pay button.'
-                : 'Publishing unlocks this reference in access_quote.sh — the customer sees the part details, photo and the full landed cost.'}
+                : 'Publishing unlocks this reference in access_quote.sh — the customer sees the part details, photo and a landed cost per freight option. Leave air_freight_cost blank to offer sea only.'}
             </p>
             {status === 'saved' && (
               <p className="goem-success">$ 200 &gt; quote published for {request.ref}</p>
